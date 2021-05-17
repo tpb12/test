@@ -110,7 +110,7 @@ void CUGSService::Run()
 		char * pBuffer = new char[iBufferLength];
 		memset(pBuffer, 0, iBufferLength);
 
-		DWORD dwBytesReceived;
+		//DWORD dwBytesReceived;
 		BOOL bRun = TRUE;
 
 		LARGE_INTEGER liDueTime;

@@ -7,7 +7,7 @@
 
 class CSettings : public CObject  
 {
-	//DECLARE_SERIAL(CSettings);
+	DECLARE_SERIAL(CSettings);
 
 public:
 	CSettings();

@@ -9,7 +9,7 @@ static char THIS_FILE[]=__FILE__;
 
 CSettings g_Settings;
 
-//IMPLEMENT_SERIAL(CSettings, CObject, 1)
+IMPLEMENT_SERIAL(CSettings, CObject, 1)
 
 CSettings::CSettings()
 {
