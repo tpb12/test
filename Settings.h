@@ -5,7 +5,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-class CSettings : public CObject  
+class CSettings : public CObject
 {
 	DECLARE_SERIAL(CSettings);
 
