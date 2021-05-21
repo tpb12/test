@@ -92,7 +92,7 @@ void CUGSService::Run()
 
 	TCHAR szReportPath[_MAX_PATH], szDrive[_MAX_DRIVE], szDir[_MAX_DIR], szName[_MAX_FNAME], szExt[_MAX_EXT];
 	_splitpath_s(m_szWorkingDir, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, NULL, 0, NULL, 0);
-	_splitpath_s(g_Settings.m_strSettingsReportPath, NULL, 0, NULL, 0, szName, _MAX_FNAME, szExt, _MAX_EXT);
+	_splitpath_s(g_Settings.m_strSettingsReportPath.c_str(), NULL, 0, NULL, 0, szName, _MAX_FNAME, szExt, _MAX_EXT);
 	_makepath_s(szReportPath, _MAX_PATH, szDrive, szDir, szName, szExt);
 
 	g_Settings.Save(szReportPath);

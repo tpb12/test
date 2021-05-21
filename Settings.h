@@ -5,9 +5,9 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-class CSettings : public CObject
+class CSettings// : public CObject
 {
-	DECLARE_SERIAL(CSettings);
+	//DECLARE_SERIAL(CSettings);
 
 public:
 	CSettings();
@@ -24,14 +24,14 @@ public:
 	BOOL m_bShowSIOMessages;
 	BOOL m_bShowMessageErrors;
 	BOOL m_bShowCOMErrors;
-	CString m_strSettingsReportPath;
+	std::string m_strSettingsReportPath;
 
 	UINT m_nBufferSize;
 
 	CString m_strIncomingAddress;
 	UINT m_nIncomingPort;
 
-	CString m_strCOMSetup;
+	std::string m_strCOMSetup;
 	int m_iCOMRttc;
 	int m_iCOMWttc;
 	int m_iCOMRit;
@@ -95,6 +95,46 @@ public:
 	//������ ugs
 	WORD m_wSourceID;
 	WORD m_wStatusRequestMessageType;
+private:
+	bool SettingsLookup(const std::map<std::string, std::string>& mapset,
+		const std::string& sstring, std::string& str)
+	{
+		const auto& it = mapset.find(sstring);
+		if (it != mapset.end())
+		{
+			str = it->second;
+			return true;
+		}
+		return false;
+	}
+	static void trim(std::string& s)
+	{
+		s.erase(s.begin(), std::find_if_not(s.begin(), s.end(),
+			[](char c) { return std::isspace(c); }));
+		s.erase(std::find_if_not(s.rbegin(), s.rend(),
+			[](char c) { return std::isspace(c); }).base(), s.end());
+	}
+	static void trim(std::string& s, char space)
+	{
+		s.erase(s.begin(), std::find_if_not(s.begin(), s.end(),
+			[space](char c) { return c == space; }));
+		s.erase(std::find_if_not(s.rbegin(), s.rend(),
+			[space](char c) { return c == space; }).base(), s.end());
+	}
+	static std::vector<std::string> tokenize(const std::string& input,
+		const char token)
+	{
+		std::stringstream ss(input);
+		std::string s;
+		std::vector<std::string> result;
+
+		while (std::getline(ss, s, token))
+		{
+			result.push_back(s);
+		}
+
+		return result;
+	}
 };
 
 extern CSettings g_Settings;

@@ -9,7 +9,7 @@ static char THIS_FILE[]=__FILE__;
 
 CSettings g_Settings;
 
-IMPLEMENT_SERIAL(CSettings, CObject, 1)
+//IMPLEMENT_SERIAL(CSettings, CObject, 1)
 
 CSettings::CSettings()
 {
@@ -85,68 +85,110 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 {
 	try
 	{
-		CStdioFile file(lpszProfileName, CFile::modeRead | CFile::shareDenyWrite | CFile::typeText);
+		//CStdioFile file(lpszProfileName, CFile::modeRead | CFile::shareDenyWrite | CFile::typeText);
+		std::ifstream infile(lpszProfileName, std::ios_base::in);
+		if (!infile)
+			return FALSE;
 
 		CMapStringToString mapSettings;
+		std::map<std::string, std::string> mapSettings1;
 		CString strGroup(_T("[General]"));
+		std::string strGroup1("[General]");
 
-		CString strLine;
-		while(file.ReadString(strLine))
+		std::string strLine1;
+		while (!infile.eof())
 		{
-			strLine.Trim();
-			int iComment = strLine.Find(_T(';'), 0);
-			if(iComment >= 0)
-				strLine.Delete(iComment, strLine.GetLength() - iComment);
-
-			if(strLine.IsEmpty())
+			std::getline(infile, strLine1);
+			trim(strLine1);
+			std::size_t iComment = strLine1.find(_T(';'), 0);
+			if (iComment != std::string::npos)
+				strLine1.erase(iComment, strLine1.length() - iComment);
+			if (strLine1.empty())
 				continue;
-
-			if(strLine.Find(_T('[')) == 0 && strLine.ReverseFind(_T(']')) == strLine.GetLength() - 1)
+			if (strLine1.find(_T('[')) == 0 &&
+				strLine1.rfind(_T(']')) == strLine1.length() - 1)
 			{
-				strGroup = strLine;
+				strGroup1 = strLine1;
 				continue;
 			}
 
 			int iPos = 0;
-			CString strKey(strGroup + _T('/') + strLine.Tokenize(_T("="), iPos).Trim());
-			CString strValue(strLine);
-			strValue.Delete(0, iPos);
-
-			mapSettings.SetAt(strKey, strValue.Trim().Trim(_T("\"")));
+			std::string strKey(strGroup1 + _T('/'));
+			std::string strValue;
+			auto toks = tokenize(strLine1, '=');
+			if (toks.size() > 1)
+			{
+				strKey += toks[0];
+				strValue = toks[1];
+				trim(strKey);
+				trim(strValue);
+				trim(strValue, '\"');
+			}
+			mapSettings1.insert({ strKey, strValue });
 		}
 
+		//CString strLine;
+		//while(file.ReadString(strLine))
+		//{
+		//	strLine.Trim();
+		//	int iComment = strLine.Find(_T(';'), 0);
+		//	if(iComment >= 0)
+		//		strLine.Delete(iComment, strLine.GetLength() - iComment);
+
+		//	if(strLine.IsEmpty())
+		//		continue;
+
+		//	if(strLine.Find(_T('[')) == 0 && strLine.ReverseFind(_T(']')) == strLine.GetLength() - 1)
+		//	{
+		//		strGroup = strLine;
+		//		continue;
+		//	}
+
+		//	int iPos = 0;
+		//	CString strKey(strGroup + _T('/') + strLine.Tokenize(_T("="), iPos).Trim());
+		//	CString strValue(strLine);
+		//	strValue.Delete(0, iPos);
+
+		//	mapSettings.SetAt(strKey, strValue.Trim().Trim(_T("\"")));
+		//	mapSettings1.insert({ strKey, strValue });
+		//}
+
 		int iValue;
-		if(mapSettings.Lookup(_T("[General]/PollingPeriod"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue) && iValue != 0)
+		std::string strLine;
+		if (SettingsLookup(mapSettings1, _T("[General]/PollingPeriod"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue) && iValue != 0)
 			m_dwPollingPeriod = (DWORD)iValue;
 
-		if(mapSettings.Lookup(_T("[General]/TestLoopback"), strLine))
-			m_bTestLoopback = strLine.MakeLower() == _T("1") ? TRUE : FALSE;
+		if(SettingsLookup(mapSettings1, _T("[General]/TestLoopback"), strLine))
+			m_bTestLoopback = strLine == _T("1") ? TRUE : FALSE;
 
-		if(mapSettings.Lookup(_T("[General]/ShowSIOMessages"), strLine))
-			m_bShowSIOMessages = strLine.MakeLower() == _T("1") ? TRUE : FALSE;
+		if(SettingsLookup(mapSettings1, _T("[General]/ShowSIOMessages"), strLine))
+			m_bShowSIOMessages = strLine == _T("1") ? TRUE : FALSE;
 
-		if(mapSettings.Lookup(_T("[General]/ShowMessageErrors"), strLine))
-			m_bShowMessageErrors = strLine.MakeLower() == _T("1") ? TRUE : FALSE;
+		if(SettingsLookup(mapSettings1, _T("[General]/ShowMessageErrors"), strLine))
+			m_bShowMessageErrors = strLine == _T("1") ? TRUE : FALSE;
 
-		if(mapSettings.Lookup(_T("[General]/ShowCOMErrors"), strLine))
-			m_bShowCOMErrors = strLine.MakeLower() == _T("1") ? TRUE : FALSE;
+		if(SettingsLookup(mapSettings1, _T("[General]/ShowCOMErrors"), strLine))
+			m_bShowCOMErrors = strLine == _T("1") ? TRUE : FALSE;
 
-		if(mapSettings.Lookup(_T("[General]/SettingsReportPath"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[General]/SettingsReportPath"), strLine))
 			m_strSettingsReportPath = strLine;
 
-		if(mapSettings.Lookup(_T("[General]/BufferSize"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue) && iValue != 0)
+		if(SettingsLookup(mapSettings1, _T("[General]/BufferSize"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue) && iValue != 0)
 			m_nBufferSize = (UINT)iValue;
 
-		if(mapSettings.Lookup(_T("[UDP]/IncomingPort"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue) && iValue != 0)
+		if(SettingsLookup(mapSettings1, _T("[UDP]/IncomingPort"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue) && iValue != 0)
 			m_nIncomingPort = (UINT)iValue;
 
-		if(mapSettings.Lookup(_T("[UDP]/OutgoingIP"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[UDP]/OutgoingIP"), strLine))
 		{
-			DWORD dwTemp = (DWORD)inet_addr(strLine);
+			DWORD dwTemp = (DWORD)inet_addr(strLine.c_str());
 			if(INADDR_NONE == dwTemp)
 			{
 				LPHOSTENT lphost;
-				lphost = gethostbyname(strLine);
+				lphost = gethostbyname(strLine.c_str());
 				if (lphost != NULL)
 					dwTemp = ((LPIN_ADDR)lphost->h_addr)->s_addr;
 				else
@@ -158,41 +200,50 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 		}
 
-
-		if(mapSettings.Lookup(_T("[COM]/SetupParams"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[COM]/SetupParams"), strLine))
 			m_strCOMSetup = strLine;
 
-		if(mapSettings.Lookup(_T("[COM]/rttc"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[COM]/rttc"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_iCOMRttc = iValue;
 
-		if(mapSettings.Lookup(_T("[COM]/wttc"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[COM]/wttc"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_iCOMWttc = iValue;
 
-		if(mapSettings.Lookup(_T("[COM]/rit"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[COM]/rit"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_iCOMRit = iValue;
 
 		CByteArray arTemp;
-		if(mapSettings.Lookup(_T("[Message]/CPAddr"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/CPAddr"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wCPAddr = (WORD)iValue;
-		if(mapSettings.Lookup(_T("[Message]/PUAddr"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/PUAddr"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wPUAddr = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/Prefix"), strLine) && ByteArrayFromString(strLine, arTemp, _T("")))
+		if(SettingsLookup(mapSettings1, _T("[Message]/Prefix"), strLine) &&
+			ByteArrayFromString(strLine.c_str(), arTemp, _T("")))
 			m_arPrefix.Copy(arTemp);
 
-		if(mapSettings.Lookup(_T("[Message]/OutPrefix"), strLine) && ByteArrayFromString(strLine, arTemp, _T("")))
+		if(SettingsLookup(mapSettings1, _T("[Message]/OutPrefix"), strLine) &&
+			ByteArrayFromString(strLine.c_str(), arTemp, _T("")))
 			m_arOutPrefix.Copy(arTemp);
 
-		if(mapSettings.Lookup(_T("[Message]/CRC16Init"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/CRC16Init"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wCRC16Init = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/ComposedType"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/ComposedType"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wComposedType = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/OutputComposedType"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/OutputComposedType"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wOutputComposedType = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/TypesToUnPack"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Message]/TypesToUnPack"), strLine))
 		{
 			m_mapMsgTypesToUnpack.RemoveAll();
 			if(strLine == _T("*"))
@@ -202,33 +253,56 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			}
 			else
 			{
-				for(int iPos = 0; iPos < strLine.GetLength() - 1; )
+				auto toks = tokenize(strLine, ' ');
+				for (auto& s : toks)
+				{
+					trim(s);
+					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
+						m_mapMsgTypesToUnpack.SetAt((WORD)iValue, NULL);
+				}
+				/*for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				{
 					if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
 						m_mapMsgTypesToUnpack.SetAt((WORD)iValue, NULL);
-				}
+				}*/
 				m_bUnpackAll = FALSE;
 			}
 		}
 
-		if(mapSettings.Lookup(_T("[Message]/MarkComposedMessageMask"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Message]/MarkComposedMessageMask"), strLine))
 		{
-			int iPos = 0;
+			auto toks = tokenize(strLine, ' ');
+			if (toks.size() > 1)
+			{
+				if (::StrToIntEx(toks[0].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_MarkComposedMask.m_wDestMask = (WORD)iValue;
+				if (::StrToIntEx(toks[1].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_MarkComposedMask.m_wSrcMask = (WORD)iValue;
+			}
+			/*int iPos = 0;
 			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
 				m_MarkComposedMask.m_wDestMask = (WORD)iValue;
 			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_MarkComposedMask.m_wSrcMask = (WORD)iValue;
+				m_MarkComposedMask.m_wSrcMask = (WORD)iValue;*/
 		}
-		if(mapSettings.Lookup(_T("[Message]/MarkMessageMask"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Message]/MarkMessageMask"), strLine))
 		{
-			int iPos = 0;
+			auto toks = tokenize(strLine, ' ');
+			if (toks.size() > 1)
+			{
+				if (::StrToIntEx(toks[0].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_MarkNestedMask.m_wDestMask = (WORD)iValue;
+				if (::StrToIntEx(toks[1].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_MarkNestedMask.m_wSrcMask = (WORD)iValue;
+			}
+			/*int iPos = 0;
 			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
 				m_MarkNestedMask.m_wDestMask = (WORD)iValue;
 			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_MarkNestedMask.m_wSrcMask = (WORD)iValue;
+				m_MarkNestedMask.m_wSrcMask = (WORD)iValue;*/
 		}
 
-		if(mapSettings.Lookup(_T("[Message]/TypesToMark"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Message]/TypesToMark"), strLine))
 		{
 			m_mapMsgTypesToMark.RemoveAll();
 			if(strLine == _T("*"))
@@ -238,11 +312,18 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			}
 			else
 			{
-				for(int iPos = 0; iPos < strLine.GetLength() - 1; )
+				auto toks = tokenize(strLine, ' ');
+				for (auto& s : toks)
 				{
-					if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+					trim(s);
+					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
 						m_mapMsgTypesToMark.SetAt((WORD)iValue, NULL);
 				}
+				//for(int iPos = 0; iPos < strLine.GetLength() - 1; )
+				//{
+				//	if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+				//		m_mapMsgTypesToMark.SetAt((WORD)iValue, NULL);
+				//}
 				m_bMarkAll = FALSE;
 			}
 		}
@@ -251,25 +332,31 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 		for(int i = 1; i < 10; i++)
 		{
-			CString strTemp;
-			strTemp.Format(_T("[Message]/Type%u"), i);
+			//CString strTemp;
+			//strTemp.Format(_T("[Message]/Type%u"), i);
+			char strTemp[100];
+			snprintf(strTemp, sizeof(strTemp), "[Message]/Type%u", i);
 
-			if(!mapSettings.Lookup(strTemp, strLine))
+			if(!SettingsLookup(mapSettings1, strTemp, strLine))
+				continue;
+
+			auto toks = tokenize(strLine, ' ');
+			if (toks.size() < 6)
 				continue;
 
 			MESSAGETYPE type;
-			int iPos = 0;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+			
+			if(::StrToIntEx(toks[0].c_str(), STIF_SUPPORT_HEX, &iValue))
 				type.m_wType = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+			if(::StrToIntEx(toks[1].c_str(), STIF_SUPPORT_HEX, &iValue))
 				type.m_wMaxLength = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+			if(::StrToIntEx(toks[2].c_str(), STIF_SUPPORT_HEX, &iValue))
 				type.m_wDestination = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+			if(::StrToIntEx(toks[3].c_str(), STIF_SUPPORT_HEX, &iValue))
 				type.m_wSource = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+			if(::StrToIntEx(toks[4].c_str(), STIF_SUPPORT_HEX, &iValue))
 				type.m_wDestMask = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
+			if(::StrToIntEx(toks[5].c_str(), STIF_SUPPORT_HEX, &iValue))
 				type.m_wSrcMask = (WORD)iValue;
 
 			if(type.m_wType == 0x0505) {
@@ -290,30 +377,38 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 		MESSAGETYPE typeStatus(0x0001, 0x1000);
 		m_mapMsgTypes.SetAt(0x0001, typeStatus);
 
-		if(mapSettings.Lookup(_T("[Message]/StatusPeriod"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/StatusPeriod"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_nStatusPeriod = (UINT)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/SendStatusTO"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/SendStatusTO"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_iSendStatTO = (int)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/StatusMsg"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Message]/StatusMsg"), strLine))
 		{
-			int iPos = 0;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_StatusHdr.m_wType = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_StatusHdr.m_wDestination = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_StatusHdr.m_wSource = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_StatusMsg.m_wType = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_StatusMsg.m_wDestination = (WORD)iValue;
-			if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
-				m_StatusMsg.m_wSource = (WORD)iValue;
-			ByteArrayFromString(strLine.Tokenize(_T(" "), iPos), arTemp, _T(""));
-			m_arStatusData.Copy(arTemp);
+			auto toks = tokenize(strLine, ' ');
+			if (toks.size() >= 6)
+			{
+				if (::StrToIntEx(toks[0].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_StatusHdr.m_wType = (WORD)iValue;
+				if (::StrToIntEx(toks[1].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_StatusHdr.m_wDestination = (WORD)iValue;
+				if (::StrToIntEx(toks[2].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_StatusHdr.m_wSource = (WORD)iValue;
+				if (::StrToIntEx(toks[3].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_StatusMsg.m_wType = (WORD)iValue;
+				if (::StrToIntEx(toks[4].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_StatusMsg.m_wDestination = (WORD)iValue;
+				if (::StrToIntEx(toks[5].c_str(), STIF_SUPPORT_HEX, &iValue))
+					m_StatusMsg.m_wSource = (WORD)iValue;
 
+				if (toks.size() >= 7)
+				{
+					ByteArrayFromString(toks[6].c_str(), arTemp, _T(""));
+					m_arStatusData.Copy(arTemp);
+				}
+			}
 			replDef(m_StatusMsg.m_wSource, m_wCPAddr);
 			replDef(m_StatusMsg.m_wDestination, m_wPUAddr);
 
@@ -321,28 +416,32 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			UpdateStatusMsg(0);
 		}
 
-		if(mapSettings.Lookup(_T("[Message]/TUType"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/TUType"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_TUType = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Message]/TUSrcMask"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/TUSrcMask"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_TUSrcMask = (WORD)iValue;
-		if(mapSettings.Lookup(_T("[Message]/TUSrcComMsgIndex"), strLine))
-			m_TUSrcComMsgIndex = strLine.MakeLower() == _T("1") ? TRUE : FALSE;
-		if(mapSettings.Lookup(_T("[Message]/TUPrimToSecSrc"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/TUSrcComMsgIndex"), strLine))
+			m_TUSrcComMsgIndex = strLine == _T("1") ? TRUE : FALSE;
+		if(SettingsLookup(mapSettings1, _T("[Message]/TUPrimToSecSrc"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_TUPrimToSecSrc = (UINT)iValue;
-		if(mapSettings.Lookup(_T("[Message]/TUSecToPrimSrc"), strLine) && ::StrToIntEx(strLine, STIF_DEFAULT, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Message]/TUSecToPrimSrc"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
 			m_TUSecToPrimSrc = (UINT)iValue;
 
-		if(mapSettings.Lookup(_T("[Log]/KeepLog"), strLine))
-			m_bKeepLog = strLine.MakeLower() == _T("1") ? TRUE : FALSE;
+		if(SettingsLookup(mapSettings1, _T("[Log]/KeepLog"), strLine))
+			m_bKeepLog = strLine == _T("1") ? TRUE : FALSE;
 
-		if(mapSettings.Lookup(_T("[Log]/LogIP"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Log]/LogIP"), strLine))
 		{
-			DWORD dwTemp = (DWORD)inet_addr(strLine);
+			DWORD dwTemp = (DWORD)inet_addr(strLine.c_str());
 			if(INADDR_NONE == dwTemp)
 			{
 				LPHOSTENT lphost;
-				lphost = gethostbyname(strLine);
+				lphost = gethostbyname(strLine.c_str());
 				if (lphost != NULL)
 					dwTemp = ((LPIN_ADDR)lphost->h_addr)->s_addr;
 				else
@@ -354,10 +453,11 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 		}
 
 
-		if(mapSettings.Lookup(_T("[Log]/LogComposedType"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Log]/LogComposedType"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wLogComposedType = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Log]/LogTypesToUnPack"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Log]/LogTypesToUnPack"), strLine))
 		{
 			m_mapLogMsgTypesToUnpack.RemoveAll();
 			if(strLine == _T("*"))
@@ -367,20 +467,27 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			}
 			else
 			{
-				for(int iPos = 0; iPos < strLine.GetLength() - 1; )
+				auto toks = tokenize(strLine, ' ');
+				for (auto& s : toks)
+				{
+					trim(s);
+					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
+						m_mapLogMsgTypesToUnpack.SetAt((WORD)iValue, NULL);
+				}
+				/*for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				{
 					if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
 						m_mapLogMsgTypesToUnpack.SetAt((WORD)iValue, NULL);
-				}
+				}*/
 				m_bLogUnpackAll = FALSE;
 			}
 		}
 
-		if(mapSettings.Lookup(_T("[Log]/LogComposedTypeToPack"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Log]/LogComposedTypeToPack"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wLogComposedTypeToPack = (WORD)iValue;
 
-
-		if(mapSettings.Lookup(_T("[Log]/LogTypesToPack"), strLine))
+		if(SettingsLookup(mapSettings1, _T("[Log]/LogTypesToPack"), strLine))
 		{
 			m_mapLogMsgTypesToPack.RemoveAll();
 			if(strLine == _T("*"))
@@ -390,26 +497,34 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			}
 			else
 			{
-				for(int iPos = 0; iPos < strLine.GetLength() - 1; )
+				auto toks = tokenize(strLine, ' ');
+				for (auto& s : toks)
+				{
+					trim(s);
+					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
+						m_mapLogMsgTypesToPack.SetAt((WORD)iValue, NULL);
+				}
+				/*for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				{
 					if(::StrToIntEx(strLine.Tokenize(_T(" "), iPos), STIF_SUPPORT_HEX, &iValue))
 						m_mapLogMsgTypesToPack.SetAt((WORD)iValue, NULL);
-				}
+				}*/
 				m_bLogPackAll = FALSE;
 			}
 		}
 
-		if(mapSettings.Lookup(_T("[Status]/SourceIndex"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Status]/SourceIndex"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wSourceID = (WORD)iValue;
 
-		if(mapSettings.Lookup(_T("[Status]/StatusRequestMessageType"), strLine) && ::StrToIntEx(strLine, STIF_SUPPORT_HEX, &iValue))
+		if(SettingsLookup(mapSettings1, _T("[Status]/StatusRequestMessageType"), strLine) &&
+			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wStatusRequestMessageType = (WORD)iValue;
 
 		return TRUE;
 	}
-	catch(CFileException * pfe)
+	catch (std::exception&)
 	{
-		pfe->Delete();
 	}
 
 	return FALSE;
@@ -419,52 +534,63 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 {
 	try
 	{
-		CStdioFile file(lpszProfileName, CFile::modeCreate | CFile::modeWrite | CFile::shareDenyWrite | CFile::typeText);
+		std::ofstream outfile(lpszProfileName);//, std::ios_base::out);
+		if (!outfile.is_open())
+			return FALSE;
 
-		CString strTemp;
-		file.WriteString(_T("[General]\n"));
-		strTemp.Format(_T("PollingPeriod = %u\n"), m_dwPollingPeriod);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("TestLoopback = %s\n"), m_bTestLoopback ? _T("1") : _T("0"));
-		file.WriteString(strTemp);
-		strTemp.Format(_T("ShowSIOMessages = %s\n"), m_bShowSIOMessages ? _T("1") : _T("0"));
-		file.WriteString(strTemp);
-		strTemp.Format(_T("ShowMessageErrors = %s\n"), m_bShowMessageErrors ? _T("1") : _T("0"));
-		file.WriteString(strTemp);
-		strTemp.Format(_T("ShowCOMErrors = %s\n"), m_bShowCOMErrors ? _T("1") : _T("0"));
-		file.WriteString(strTemp);
-		strTemp.Format(_T("SettingsReportPath = \"%s\"\n"), m_strSettingsReportPath);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("BufferSize = 0x%04X\n"), m_nBufferSize);
-		file.WriteString(strTemp);
-		file.WriteString(_T("[UDP]\n"));
-		strTemp.Format(_T("IncomingPort = %u\n"), m_nIncomingPort);
-		file.WriteString(strTemp);
-		file.WriteString(_T("[COM]\n"));
-		strTemp.Format(_T("SetupParams = \"%s\"\n"), m_strCOMSetup);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("rttc = %i\n"), m_iCOMRttc);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("wttc = %i\n"), m_iCOMWttc);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("rit = %i\n"), m_iCOMRit);
-		file.WriteString(strTemp);
-		file.WriteString(_T("[Message]\n"));
-		strTemp.Format(_T("CPAddr = 0x%04X\n"), m_wCPAddr);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("PUAddr = 0x%04X\n"), m_wPUAddr);
-		file.WriteString(strTemp);
-		ByteArrayToString(m_arPrefix.GetData(), (int)m_arPrefix.GetSize(), strTemp, _T("Prefix = \""));
-		file.WriteString(strTemp + _T("\"\n"));
-		strTemp.Format(_T("CRC16Init = 0x%04X\n"), m_wCRC16Init);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("ComposedType = 0x%04X\n"), m_wComposedType);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("OutputComposedType = 0x%04X\n"), m_wOutputComposedType);
-		file.WriteString(strTemp);
-		file.WriteString(_T("TypesToUnPack = \""));
+		//CStdioFile file(lpszProfileName, CFile::modeCreate | CFile::modeWrite | CFile::shareDenyWrite | CFile::typeText);
+		//CString strTemp;
+
+		TCHAR strTemp[2048];
+		snprintf(strTemp, sizeof(strTemp), _T("[General]\n"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("PollingPeriod = %u\n"), m_dwPollingPeriod);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("TestLoopback = %s\n"), m_bTestLoopback ? _T("1") : _T("0"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("ShowSIOMessages = %s\n"), m_bShowSIOMessages ? _T("1") : _T("0"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("ShowMessageErrors = %s\n"), m_bShowMessageErrors ? _T("1") : _T("0"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("ShowCOMErrors = %s\n"), m_bShowCOMErrors ? _T("1") : _T("0"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("SettingsReportPath = \"%s\"\n"), m_strSettingsReportPath.c_str());
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("BufferSize = 0x%04X\n"), m_nBufferSize);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("[UDP]\n"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("IncomingPort = %u\n"), m_nIncomingPort);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("[COM]\n"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("SetupParams = \"%s\"\n"), m_strCOMSetup.c_str());
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("rttc = %i\n"), m_iCOMRttc);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("wttc = %i\n"), m_iCOMWttc);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("rit = %i\n"), m_iCOMRit);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("[Message]\n"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("CPAddr = 0x%04X\n"), m_wCPAddr);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("PUAddr = 0x%04X\n"), m_wPUAddr);
+		outfile << strTemp;
+		std::string stemp;
+		ByteArrayToString(m_arPrefix.GetData(), (int)m_arPrefix.GetSize(), stemp, _T("Prefix = \""));
+		outfile << stemp <<_T("\"\n");
+		snprintf(strTemp, sizeof(strTemp), _T("CRC16Init = 0x%04X\n"), m_wCRC16Init);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("ComposedType = 0x%04X\n"), m_wComposedType);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("OutputComposedType = 0x%04X\n"), m_wOutputComposedType);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("TypesToUnPack = \""));
+		outfile << strTemp;
 		if(m_bUnpackAll)
-			file.WriteString(_T("*"));
+			outfile << _T("*");
 		else
 		{
 			POSITION pos = m_mapMsgTypesToUnpack.GetStartPosition();
@@ -473,21 +599,22 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 				WORD wType;
 				void * pTemp;
 				m_mapMsgTypesToUnpack.GetNextAssoc(pos, wType, pTemp);
-				strTemp.Format(_T("%04X "), wType);
-				file.WriteString(strTemp);
+				snprintf(strTemp, sizeof(strTemp), _T("%04X "), wType);
+				outfile << strTemp;
 			}
 		}
-		file.WriteString(_T("\"\n"));
+		outfile << _T("\"\n");
 
-		strTemp.Format(_T("MarkComposedMessageMask  = \"0x%04X 0x%04X\"\n"), m_MarkComposedMask.m_wDestMask,
+		snprintf(strTemp, sizeof(strTemp), _T("MarkComposedMessageMask  = \"0x%04X 0x%04X\"\n"), m_MarkComposedMask.m_wDestMask,
 			m_MarkComposedMask.m_wSrcMask);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("MarkMessageMask  = \"0x%04X 0x%04X\"\n"), m_MarkNestedMask.m_wDestMask,
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("MarkMessageMask  = \"0x%04X 0x%04X\"\n"), m_MarkNestedMask.m_wDestMask,
 			m_MarkNestedMask.m_wSrcMask);
-		file.WriteString(strTemp);
-		file.WriteString(_T("TypesToMark = \""));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("TypesToMark = \""));
+		outfile << strTemp;
 		if(m_bMarkAll)
-			file.WriteString(_T("*"));
+			outfile << _T("*");
 		else
 		{
 			POSITION pos = m_mapMsgTypesToMark.GetStartPosition();
@@ -496,11 +623,11 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 				WORD wType;
 				void * pTemp;
 				m_mapMsgTypesToMark.GetNextAssoc(pos, wType, pTemp);
-				strTemp.Format(_T("%04X "), wType);
-				file.WriteString(strTemp);
+				snprintf(strTemp, sizeof(strTemp), _T("0x%04X "), wType);
+				outfile << strTemp;
 			}
 		}
-		file.WriteString(_T("\"\n"));
+		outfile << _T("\"\n");
 
 		POSITION pos = m_mapMsgTypes.GetStartPosition();
 		for(int i = 0; pos != NULL && i < 10; i++)
@@ -508,45 +635,47 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			WORD wType;
 			MESSAGETYPE type;
 			m_mapMsgTypes.GetNextAssoc(pos, wType, type);
-			strTemp.Format(_T("Type%u = \"0x%04X 0x%X 0x%04X 0x%04X 0x%04X 0x%04X\"\n"), i, type.m_wType,
+			snprintf(strTemp, sizeof(strTemp), _T("Type%u = \"0x%04X 0x%X 0x%04X 0x%04X 0x%04X 0x%04X\"\n"), i, type.m_wType,
 				type.m_wMaxLength, type.m_wDestination, type.m_wSource, type.m_wDestMask, type.m_wSrcMask);
-			file.WriteString(strTemp);
+			outfile << strTemp;
 		}
 
-		strTemp.Format(_T("StatusPeriod = %u\n"), m_nStatusPeriod);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("SendStatusTO = %u\n"), m_iSendStatTO);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("StatusMsg = \"0x%04X 0x%04X 0x%04X 0x%04X 0x%04X 0x%04X "), m_StatusHdr.m_wType,
+		snprintf(strTemp, sizeof(strTemp), _T("StatusPeriod = %u\n"), m_nStatusPeriod);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("SendStatusTO = %u\n"), m_iSendStatTO);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("StatusMsg = \"0x%04X 0x%04X 0x%04X 0x%04X 0x%04X 0x%04X "), m_StatusHdr.m_wType,
 			m_StatusHdr.m_wDestination, m_StatusHdr.m_wSource, m_StatusMsg.m_wType, m_StatusMsg.m_wDestination,
 			m_StatusMsg.m_wSource);
-		file.WriteString(strTemp);
-		ByteArrayToString(m_arStatusData.GetData(), m_arStatusData.GetSize(), strTemp);
-		file.WriteString(strTemp+_T("\"\n"));
+		outfile << strTemp;
+		ByteArrayToString(m_arStatusData.GetData(), m_arStatusData.GetSize(), stemp);
+		outfile << stemp << _T("\"\n");
 
-		strTemp.Format(_T("TUType = 0x%04X\n"), m_TUType);
-		file.WriteString(strTemp);
+		snprintf(strTemp, sizeof(strTemp), _T("TUType = 0x%04X\n"), m_TUType);
+		outfile << strTemp;
 
-		strTemp.Format(_T("TUSrcMask = 0x%04X\n"), m_TUSrcMask);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("TUSrcComMsgIndex = %s\n"), m_TUSrcComMsgIndex ? _T("1") : _T("0"));
-		file.WriteString(strTemp);
+		snprintf(strTemp, sizeof(strTemp), _T("TUSrcMask = 0x%04X\n"), m_TUSrcMask);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("TUSrcComMsgIndex = %s\n"), m_TUSrcComMsgIndex ? _T("1") : _T("0"));
+		outfile << strTemp;
 
-		strTemp.Format(_T("TUPrimToSecSrc = %u\n"), m_TUPrimToSecSrc);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("TUSecToPrimSrc = %u\n"), m_TUSecToPrimSrc);
-		file.WriteString(strTemp);
-		ByteArrayToString(m_arOutPrefix.GetData(), m_arOutPrefix.GetSize(), strTemp, _T("OutPrefix = \""));
-		file.WriteString(strTemp + _T("\"\n"));
+		snprintf(strTemp, sizeof(strTemp), _T("TUPrimToSecSrc = %u\n"), m_TUPrimToSecSrc);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("TUSecToPrimSrc = %u\n"), m_TUSecToPrimSrc);
+		outfile << strTemp;
+		ByteArrayToString(m_arOutPrefix.GetData(), m_arOutPrefix.GetSize(), stemp, _T("OutPrefix = \""));
+		outfile << stemp << _T("\"\n");
 
-		file.WriteString(_T("[Log]\n"));
-		strTemp.Format(_T("KeepLog = %s\n"), m_bKeepLog ? _T("1") : _T("0"));
-		file.WriteString(strTemp);
-		strTemp.Format(_T("LogComposedType = 0x%04X\n"), m_wLogComposedType);
-		file.WriteString(strTemp);
-		file.WriteString(_T("LogTypesToUnPack = \""));
+		snprintf(strTemp, sizeof(strTemp), _T("[Log]\n"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("KeepLog = %s\n"), m_bKeepLog ? _T("1") : _T("0"));
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("LogComposedType = 0x%04X\n"), m_wLogComposedType);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("LogTypesToUnPack = \""));
+		outfile << strTemp;
 		if(m_bLogUnpackAll)
-			file.WriteString(_T("*"));
+			outfile << _T("*");
 		else
 		{
 			POSITION pos = m_mapLogMsgTypesToUnpack.GetStartPosition();
@@ -555,18 +684,18 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 				WORD wType;
 				void * pTemp;
 				m_mapLogMsgTypesToUnpack.GetNextAssoc(pos, wType, pTemp);
-				strTemp.Format(_T("0x%04X "), wType);
-				file.WriteString(strTemp);
+				snprintf(strTemp, sizeof(strTemp), _T("0x%04X "), wType);
+				outfile << strTemp;
 			}
 		}
-		file.WriteString(_T("\"\n"));
+		outfile << _T("\"\n");
 
-
-		strTemp.Format(_T("LogComposedTypeToPack = 0x%04X\n"), m_wLogComposedTypeToPack);
-		file.WriteString(strTemp);
-		file.WriteString(_T("LogTypesToPack = \""));
+		snprintf(strTemp, sizeof(strTemp), _T("LogComposedTypeToPack = 0x%04X\n"), m_wLogComposedTypeToPack);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("LogTypesToPack = \""));
+		outfile << strTemp;
 		if(m_bLogPackAll)
-			file.WriteString(_T("*"));
+			outfile << _T("*");
 		else
 		{
 			POSITION pos = m_mapLogMsgTypesToPack.GetStartPosition();
@@ -575,25 +704,24 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 				WORD wType;
 				void * pTemp;
 				m_mapLogMsgTypesToPack.GetNextAssoc(pos, wType, pTemp);
-				strTemp.Format(_T("0x%04X "), wType);
-				file.WriteString(strTemp);
+				snprintf(strTemp, sizeof(strTemp), _T("0x%04X "), wType);
+				outfile << strTemp;
 			}
 		}
-		file.WriteString(_T("\"\n"));
+		outfile << _T("\"\n");
 
+		snprintf(strTemp, sizeof(strTemp), _T("[Status]\n"));
+		outfile << strTemp;
 
-		file.WriteString(_T("[Status]\n"));
-
-		strTemp.Format(_T("SourceIndex = 0x%04X\n"), m_wSourceID);
-		file.WriteString(strTemp);
-		strTemp.Format(_T("StatusRequestMessageType = 0x%04X\n"), m_wStatusRequestMessageType);
-		file.WriteString(strTemp);
+		snprintf(strTemp, sizeof(strTemp), _T("SourceIndex = 0x%04X\n"), m_wSourceID);
+		outfile << strTemp;
+		snprintf(strTemp, sizeof(strTemp), _T("StatusRequestMessageType = 0x%04X\n"), m_wStatusRequestMessageType);
+		outfile << strTemp;
 
 		return TRUE;
 	}
-	catch(CFileException * pfe)
+	catch(std::exception&)
 	{
-		pfe->Delete();
 	}
 
 	return FALSE;

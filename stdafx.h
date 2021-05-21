@@ -38,6 +38,14 @@
 #include <shlwapi.h>
 #include <winsvc.h>
 
+#include <map>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <sstream>
+
 #include "evlogmsg.h" // Event message ids
 
 #include "crc16.h"
