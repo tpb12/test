@@ -9,8 +9,6 @@ static char THIS_FILE[]=__FILE__;
 
 CSettings g_Settings;
 
-//IMPLEMENT_SERIAL(CSettings, CObject, 1)
-
 CSettings::CSettings()
 {
 	m_dwPollingPeriod = 1000;
@@ -29,7 +27,7 @@ CSettings::CSettings()
 	m_iCOMWttc = 0;
 	m_iCOMRit = -1;
 
-	m_arPrefix.RemoveAll();
+	m_arPrefix.clear();
 
 	m_wComposedType = 0x000003;
 	m_wOutputComposedType = 0x0000;
@@ -47,7 +45,7 @@ CSettings::CSettings()
 	m_StatusMsg = MESSAGETYPE(m_wComposedType);
 	m_MarkNestedMask = MESSAGETYPE();
 	m_MarkComposedMask = MESSAGETYPE();
-	m_arStatusData.RemoveAll();
+	m_arStatusData.clear();
 	MakeStatusMsg();
 	UpdateStatusMsg(0);
 	m_TUType = 0x000002;
@@ -68,7 +66,8 @@ CSettings::CSettings()
 	m_wStatusRequestMessageType = 0x0001;
 
 	MESSAGETYPE typeStatus(0x0001, 0x1000);
-	m_mapMsgTypes.SetAt(0x0001, typeStatus);
+	//m_mapMsgTypes.SetAt(0x0001, typeStatus);
+	m_mapMsgTypes.insert({ 0x0001, typeStatus });
 }
 
 CSettings::~CSettings()
@@ -90,9 +89,7 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 		if (!infile)
 			return FALSE;
 
-		CMapStringToString mapSettings;
 		std::map<std::string, std::string> mapSettings1;
-		CString strGroup(_T("[General]"));
 		std::string strGroup1("[General]");
 
 		std::string strLine1;
@@ -116,42 +113,27 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			std::string strKey(strGroup1 + _T('/'));
 			std::string strValue;
 			auto toks = tokenize(strLine1, '=');
-			if (toks.size() > 1)
+			std::size_t itok = strLine1.find(_T('='));
+			if (itok != std::string::npos)
 			{
-				strKey += toks[0];
-				strValue = toks[1];
-				trim(strKey);
-				trim(strValue);
+				std::string left = strLine1.substr(0, itok);
+				std::string right = strLine1.substr(itok + 1);
+				trim(left);
+				strKey += left;
+				trim(right);
+				strValue = right;
 				trim(strValue, '\"');
+				//if (toks.size() > 1)
+				//{
+				//	strKey += toks[0];
+				//	strValue = toks[1];
+				//	trim(strKey);
+				//	trim(strValue);
+				//	trim(strValue, '\"');
+				//}
+				mapSettings1.insert({ strKey, strValue });
 			}
-			mapSettings1.insert({ strKey, strValue });
 		}
-
-		//CString strLine;
-		//while(file.ReadString(strLine))
-		//{
-		//	strLine.Trim();
-		//	int iComment = strLine.Find(_T(';'), 0);
-		//	if(iComment >= 0)
-		//		strLine.Delete(iComment, strLine.GetLength() - iComment);
-
-		//	if(strLine.IsEmpty())
-		//		continue;
-
-		//	if(strLine.Find(_T('[')) == 0 && strLine.ReverseFind(_T(']')) == strLine.GetLength() - 1)
-		//	{
-		//		strGroup = strLine;
-		//		continue;
-		//	}
-
-		//	int iPos = 0;
-		//	CString strKey(strGroup + _T('/') + strLine.Tokenize(_T("="), iPos).Trim());
-		//	CString strValue(strLine);
-		//	strValue.Delete(0, iPos);
-
-		//	mapSettings.SetAt(strKey, strValue.Trim().Trim(_T("\"")));
-		//	mapSettings1.insert({ strKey, strValue });
-		//}
 
 		int iValue;
 		std::string strLine;
@@ -223,13 +205,13 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wPUAddr = (WORD)iValue;
 
-		if(SettingsLookup(mapSettings1, _T("[Message]/Prefix"), strLine) &&
-			ByteArrayFromString(strLine.c_str(), arTemp, _T("")))
-			m_arPrefix.Copy(arTemp);
+		if (SettingsLookup(mapSettings1, _T("[Message]/Prefix"), strLine) &&
+			ByteArrayFromString(strLine.c_str(), m_arPrefix, _T("")));
+			//m_arPrefix.Copy(arTemp);
 
-		if(SettingsLookup(mapSettings1, _T("[Message]/OutPrefix"), strLine) &&
-			ByteArrayFromString(strLine.c_str(), arTemp, _T("")))
-			m_arOutPrefix.Copy(arTemp);
+		if (SettingsLookup(mapSettings1, _T("[Message]/OutPrefix"), strLine) &&
+			ByteArrayFromString(strLine.c_str(), m_arOutPrefix, _T("")));
+			//m_arOutPrefix.Copy(arTemp);
 
 		if(SettingsLookup(mapSettings1, _T("[Message]/CRC16Init"), strLine) &&
 			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
@@ -245,10 +227,10 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 		if(SettingsLookup(mapSettings1, _T("[Message]/TypesToUnPack"), strLine))
 		{
-			m_mapMsgTypesToUnpack.RemoveAll();
+			m_mapMsgTypesToUnpack.clear();
 			if(strLine == _T("*"))
 			{
-				m_mapMsgTypesToUnpack.SetAt(0x0000, NULL);
+				m_mapMsgTypesToUnpack.insert({ 0x0000, NULL });
 				m_bUnpackAll = TRUE;
 			}
 			else
@@ -258,7 +240,7 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 				{
 					trim(s);
 					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
-						m_mapMsgTypesToUnpack.SetAt((WORD)iValue, NULL);
+						m_mapMsgTypesToUnpack.insert({ (WORD)iValue, NULL });
 				}
 				/*for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				{
@@ -304,10 +286,10 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 		if(SettingsLookup(mapSettings1, _T("[Message]/TypesToMark"), strLine))
 		{
-			m_mapMsgTypesToMark.RemoveAll();
+			m_mapMsgTypesToMark.clear();
 			if(strLine == _T("*"))
 			{
-				m_mapMsgTypesToMark.SetAt(0x0000, NULL);
+				m_mapMsgTypesToMark.insert({ 0x0000, NULL });
 				m_bMarkAll = TRUE;
 			}
 			else
@@ -317,7 +299,7 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 				{
 					trim(s);
 					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
-						m_mapMsgTypesToMark.SetAt((WORD)iValue, NULL);
+						m_mapMsgTypesToMark.insert({ (WORD)iValue, NULL });
 				}
 				//for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				//{
@@ -328,12 +310,11 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			}
 		}
 
-		m_mapMsgTypes.RemoveAll();
+		//m_mapMsgTypes.RemoveAll();
+		m_mapMsgTypes.clear();
 
 		for(int i = 1; i < 10; i++)
 		{
-			//CString strTemp;
-			//strTemp.Format(_T("[Message]/Type%u"), i);
 			char strTemp[100];
 			snprintf(strTemp, sizeof(strTemp), "[Message]/Type%u", i);
 
@@ -371,11 +352,13 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 				replDef(type.m_wDestination, m_wPUAddr);
 			}
 			
-			m_mapMsgTypes.SetAt(type.m_wType, type);            
+			//m_mapMsgTypes.SetAt(type.m_wType, type);
+			m_mapMsgTypes.insert({ type.m_wType, type });
 		}
 
 		MESSAGETYPE typeStatus(0x0001, 0x1000);
-		m_mapMsgTypes.SetAt(0x0001, typeStatus);
+		//m_mapMsgTypes.SetAt(0x0001, typeStatus);
+		m_mapMsgTypes.insert({ 0x0001, typeStatus });
 
 		if(SettingsLookup(mapSettings1, _T("[Message]/StatusPeriod"), strLine) &&
 			::StrToIntEx(strLine.c_str(), STIF_DEFAULT, &iValue))
@@ -405,8 +388,8 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 				if (toks.size() >= 7)
 				{
-					ByteArrayFromString(toks[6].c_str(), arTemp, _T(""));
-					m_arStatusData.Copy(arTemp);
+					ByteArrayFromString(toks[6].c_str(), m_arStatusData, _T(""));
+					//m_arStatusData.Copy(arTemp);
 				}
 			}
 			replDef(m_StatusMsg.m_wSource, m_wCPAddr);
@@ -459,10 +442,10 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 		if(SettingsLookup(mapSettings1, _T("[Log]/LogTypesToUnPack"), strLine))
 		{
-			m_mapLogMsgTypesToUnpack.RemoveAll();
+			m_mapLogMsgTypesToUnpack.clear();
 			if(strLine == _T("*"))
 			{
-				m_mapLogMsgTypesToUnpack.SetAt(0x0000, NULL);
+				m_mapLogMsgTypesToUnpack.insert({ 0x0000, NULL });
 				m_bLogUnpackAll = TRUE;
 			}
 			else
@@ -472,7 +455,7 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 				{
 					trim(s);
 					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
-						m_mapLogMsgTypesToUnpack.SetAt((WORD)iValue, NULL);
+						m_mapLogMsgTypesToUnpack.insert({ (WORD)iValue, NULL });
 				}
 				/*for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				{
@@ -489,10 +472,10 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 
 		if(SettingsLookup(mapSettings1, _T("[Log]/LogTypesToPack"), strLine))
 		{
-			m_mapLogMsgTypesToPack.RemoveAll();
+			m_mapLogMsgTypesToPack.clear();
 			if(strLine == _T("*"))
 			{
-				m_mapLogMsgTypesToPack.SetAt(0x0000, NULL);
+				m_mapLogMsgTypesToPack.insert({ 0x0000, NULL });
 				m_bLogPackAll = TRUE;
 			}
 			else
@@ -502,7 +485,7 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 				{
 					trim(s);
 					if (::StrToIntEx(s.c_str(), STIF_SUPPORT_HEX, &iValue))
-						m_mapLogMsgTypesToPack.SetAt((WORD)iValue, NULL);
+						m_mapLogMsgTypesToPack.insert({ (WORD)iValue, NULL });
 				}
 				/*for(int iPos = 0; iPos < strLine.GetLength() - 1; )
 				{
@@ -539,7 +522,6 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			return FALSE;
 
 		//CStdioFile file(lpszProfileName, CFile::modeCreate | CFile::modeWrite | CFile::shareDenyWrite | CFile::typeText);
-		//CString strTemp;
 
 		TCHAR strTemp[2048];
 		snprintf(strTemp, sizeof(strTemp), _T("[General]\n"));
@@ -579,7 +561,7 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 		snprintf(strTemp, sizeof(strTemp), _T("PUAddr = 0x%04X\n"), m_wPUAddr);
 		outfile << strTemp;
 		std::string stemp;
-		ByteArrayToString(m_arPrefix.GetData(), (int)m_arPrefix.GetSize(), stemp, _T("Prefix = \""));
+		ByteArrayToString(m_arPrefix, (int)m_arPrefix.size(), stemp, _T("Prefix = \""));
 		outfile << stemp <<_T("\"\n");
 		snprintf(strTemp, sizeof(strTemp), _T("CRC16Init = 0x%04X\n"), m_wCRC16Init);
 		outfile << strTemp;
@@ -593,12 +575,10 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			outfile << _T("*");
 		else
 		{
-			POSITION pos = m_mapMsgTypesToUnpack.GetStartPosition();
-			while(pos != NULL)
+			for (const auto& it : m_mapMsgTypesToUnpack)
 			{
-				WORD wType;
-				void * pTemp;
-				m_mapMsgTypesToUnpack.GetNextAssoc(pos, wType, pTemp);
+				WORD wType = it.first;
+				void * pTemp = it.second;
 				snprintf(strTemp, sizeof(strTemp), _T("%04X "), wType);
 				outfile << strTemp;
 			}
@@ -617,27 +597,28 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			outfile << _T("*");
 		else
 		{
-			POSITION pos = m_mapMsgTypesToMark.GetStartPosition();
-			while(pos != NULL)
+			for (const auto& it : m_mapMsgTypesToMark)
 			{
-				WORD wType;
-				void * pTemp;
-				m_mapMsgTypesToMark.GetNextAssoc(pos, wType, pTemp);
+				WORD wType = it.first;
+				void* pTemp = it.second;
 				snprintf(strTemp, sizeof(strTemp), _T("0x%04X "), wType);
 				outfile << strTemp;
 			}
 		}
 		outfile << _T("\"\n");
 
-		POSITION pos = m_mapMsgTypes.GetStartPosition();
-		for(int i = 0; pos != NULL && i < 10; i++)
+		//POSITION pos = m_mapMsgTypes.GetStartPosition();
+		//for(int i = 0; pos != NULL && i < 10; i++)
+		int i = 0;
+		for (const auto& it : m_mapMsgTypes)
 		{
-			WORD wType;
-			MESSAGETYPE type;
-			m_mapMsgTypes.GetNextAssoc(pos, wType, type);
+			WORD wType = it.first;
+			MESSAGETYPE type = it.second;
+			//m_mapMsgTypes.GetNextAssoc(pos, wType, type);
 			snprintf(strTemp, sizeof(strTemp), _T("Type%u = \"0x%04X 0x%X 0x%04X 0x%04X 0x%04X 0x%04X\"\n"), i, type.m_wType,
 				type.m_wMaxLength, type.m_wDestination, type.m_wSource, type.m_wDestMask, type.m_wSrcMask);
 			outfile << strTemp;
+			++i;
 		}
 
 		snprintf(strTemp, sizeof(strTemp), _T("StatusPeriod = %u\n"), m_nStatusPeriod);
@@ -648,7 +629,7 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			m_StatusHdr.m_wDestination, m_StatusHdr.m_wSource, m_StatusMsg.m_wType, m_StatusMsg.m_wDestination,
 			m_StatusMsg.m_wSource);
 		outfile << strTemp;
-		ByteArrayToString(m_arStatusData.GetData(), m_arStatusData.GetSize(), stemp);
+		ByteArrayToString(m_arStatusData, m_arStatusData.size(), stemp);
 		outfile << stemp << _T("\"\n");
 
 		snprintf(strTemp, sizeof(strTemp), _T("TUType = 0x%04X\n"), m_TUType);
@@ -663,7 +644,7 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 		outfile << strTemp;
 		snprintf(strTemp, sizeof(strTemp), _T("TUSecToPrimSrc = %u\n"), m_TUSecToPrimSrc);
 		outfile << strTemp;
-		ByteArrayToString(m_arOutPrefix.GetData(), m_arOutPrefix.GetSize(), stemp, _T("OutPrefix = \""));
+		ByteArrayToString(m_arOutPrefix, m_arOutPrefix.size(), stemp, _T("OutPrefix = \""));
 		outfile << stemp << _T("\"\n");
 
 		snprintf(strTemp, sizeof(strTemp), _T("[Log]\n"));
@@ -678,12 +659,10 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			outfile << _T("*");
 		else
 		{
-			POSITION pos = m_mapLogMsgTypesToUnpack.GetStartPosition();
-			while(pos != NULL)
+			for (const auto& it : m_mapLogMsgTypesToUnpack)
 			{
-				WORD wType;
-				void * pTemp;
-				m_mapLogMsgTypesToUnpack.GetNextAssoc(pos, wType, pTemp);
+				WORD wType = it.first;
+				void* pTemp = it.second;
 				snprintf(strTemp, sizeof(strTemp), _T("0x%04X "), wType);
 				outfile << strTemp;
 			}
@@ -698,12 +677,10 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 			outfile << _T("*");
 		else
 		{
-			POSITION pos = m_mapLogMsgTypesToPack.GetStartPosition();
-			while(pos != NULL)
+			for (const auto& it : m_mapLogMsgTypesToPack)
 			{
-				WORD wType;
-				void * pTemp;
-				m_mapLogMsgTypesToPack.GetNextAssoc(pos, wType, pTemp);
+				WORD wType = it.first;
+				void* pTemp = it.second;
 				snprintf(strTemp, sizeof(strTemp), _T("0x%04X "), wType);
 				outfile << strTemp;
 			}
@@ -729,12 +706,13 @@ BOOL CSettings::Save(LPCTSTR lpszProfileName)
 
 void CSettings::MakeStatusMsg()
 {
-	m_StatusMsg.m_wMaxLength = 16 + (WORD)m_arStatusData.GetSize();
+	m_StatusMsg.m_wMaxLength = 16 + (WORD)m_arStatusData.size();
 	m_StatusHdr.m_wMaxLength = 16 + m_StatusMsg.m_wMaxLength;
-	m_arStatusMsg.SetSize(m_StatusHdr.m_wMaxLength);
-	BYTE * pData = m_arStatusMsg.GetData();
-	::ZeroMemory(pData, m_StatusHdr.m_wMaxLength);
-	WORD * pHeader = (WORD *)pData;
+	m_arStatusMsg.clear();
+	m_arStatusMsg.resize(m_StatusHdr.m_wMaxLength, 0);
+	BYTE* pData = &m_arStatusMsg[0];
+	//::ZeroMemory(pData, m_StatusHdr.m_wMaxLength);
+	WORD* pHeader = (WORD *)pData;
 	pHeader[0] = m_StatusHdr.m_wMaxLength;
 	pHeader[1] = m_StatusHdr.m_wType;
 	pHeader[2] = m_StatusHdr.m_wDestination;
@@ -743,13 +721,17 @@ void CSettings::MakeStatusMsg()
 	pHeader[8] = m_StatusMsg.m_wType;
 	pHeader[9] = m_StatusMsg.m_wDestination;
 	pHeader[10] = m_StatusMsg.m_wSource;
-	memcpy(pData + 28, m_arStatusData.GetData(), m_arStatusData.GetSize());
+	if (m_arStatusData.size() > 0)
+	{
+		memcpy(pData + 28, &m_arStatusData[0], m_arStatusData.size());
+	}
 }
 
 void CSettings::UpdateStatusMsg(unsigned char ind)
 {
-	BYTE * pData = m_arStatusMsg.GetData();
-	UINT nLength = (UINT)m_arStatusMsg.GetSize();
+	//BYTE * pData = m_arStatusMsg.GetData();
+	BYTE* pData = &m_arStatusMsg[0];
+	UINT nLength = (UINT)m_arStatusMsg.size();
 	*((DWORD *)(pData + 8)) = *((DWORD *)(pData + 22)) = (DWORD)time(NULL);
 	pData[12] = ind;
 	pData[26] = ind;

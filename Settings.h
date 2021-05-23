@@ -5,11 +5,12 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-class CSettings// : public CObject
+class CSettings
 {
-	//DECLARE_SERIAL(CSettings);
-
 public:
+	typedef std::map<WORD, void*> MapWordToPtr;
+	typedef std::vector<BYTE> ByteArray;
+
 	CSettings();
 	virtual ~CSettings();
 
@@ -28,7 +29,7 @@ public:
 
 	UINT m_nBufferSize;
 
-	CString m_strIncomingAddress;
+	std::string m_strIncomingAddress;
 	UINT m_nIncomingPort;
 
 	std::string m_strCOMSetup;
@@ -36,8 +37,8 @@ public:
 	int m_iCOMWttc;
 	int m_iCOMRit;
 
-	CByteArray m_arPrefix;
-	CByteArray m_arOutPrefix;
+	ByteArray m_arPrefix;
+	ByteArray m_arOutPrefix;
 
 	WORD m_wComposedType;
 	WORD m_wOutputComposedType;
@@ -62,10 +63,11 @@ public:
 			m_wSrcMask = wSrcMask;
 		}
 	} MESSAGETYPE, * PMESSAGETYPE;
-	CMap<WORD, WORD, MESSAGETYPE, MESSAGETYPE&> m_mapMsgTypes;
-	CMapWordToPtr m_mapMsgTypesToUnpack;
+	//CMap<WORD, WORD, MESSAGETYPE, MESSAGETYPE&> m_mapMsgTypes;
+	std::map<WORD, MESSAGETYPE>m_mapMsgTypes;
+	MapWordToPtr m_mapMsgTypesToUnpack;
 	BOOL m_bUnpackAll;
-	CMapWordToPtr m_mapMsgTypesToMark;
+	MapWordToPtr m_mapMsgTypesToMark;
 	BOOL m_bMarkAll;
 
 	UINT m_nStatusPeriod;
@@ -80,23 +82,23 @@ public:
 	UINT m_TUPrimToSecSrc;
 	UINT m_TUSecToPrimSrc;
 
-	CByteArray m_arStatusData;
-	CByteArray m_arStatusMsg;
+	ByteArray m_arStatusData;
+	ByteArray m_arStatusMsg;
 
 	BOOL m_bKeepLog;
 	WORD m_wLogComposedType;
-	CMapWordToPtr m_mapLogMsgTypesToUnpack;
+	MapWordToPtr m_mapLogMsgTypesToUnpack;
 	BOOL m_bLogUnpackAll;
 
 	WORD m_wLogComposedTypeToPack;
-	CMapWordToPtr m_mapLogMsgTypesToPack;
+	MapWordToPtr m_mapLogMsgTypesToPack;
 	BOOL m_bLogPackAll;
 	
 	//������ ugs
 	WORD m_wSourceID;
 	WORD m_wStatusRequestMessageType;
 private:
-	bool SettingsLookup(const std::map<std::string, std::string>& mapset,
+	static bool SettingsLookup(const std::map<std::string, std::string>& mapset,
 		const std::string& sstring, std::string& str)
 	{
 		const auto& it = mapset.find(sstring);

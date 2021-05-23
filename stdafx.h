@@ -49,8 +49,8 @@
 #include "evlogmsg.h" // Event message ids
 
 #include "crc16.h"
-#include "DataRoutines.h"
 #include "Settings.h"
+#include "DataRoutines.h"
 #include "eventlog.h"
 
 #include "ntservice.h"

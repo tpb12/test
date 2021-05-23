@@ -28,6 +28,34 @@ BOOL ByteArrayFromString(const CString & strData, CByteArray & arResult, LPCTSTR
 	return TRUE;
 }
 
+BOOL ByteArrayFromString(const std::string& strData,
+	CSettings::ByteArray& arResult, LPCTSTR lpszPrefix)
+{
+	std::string strTempData(strData);
+	strTempData.erase(0, (int)_tcslen(lpszPrefix));
+
+	int iLength = strTempData.length();
+	if ((iLength & 1) != 0)
+		return FALSE;
+
+	iLength >>= 1;
+	//CSettings::ByteArray arTemp;
+	arResult.resize(iLength);
+	for (int i = 0; i < iLength; i++)
+	{
+		int iByte = 0, iPos = i << 1;
+		CString strTemp;
+		strTemp.Format(_T("0x%c%c"), strTempData[iPos], strTempData[iPos + 1]);
+		if (!::StrToIntEx(strTemp, STIF_SUPPORT_HEX, &iByte))
+			return FALSE;
+
+		arResult[i] = (BYTE)iByte;
+	}
+
+	//arResult.Copy(arTemp);
+	return TRUE;
+}
+
 BOOL ByteArrayFromString(LPCTSTR lpszData, PBYTE pResult, int iResult, LPCTSTR lpszPrefix)
 {
 	CString strTempData(lpszData);

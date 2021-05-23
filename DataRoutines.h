@@ -7,10 +7,13 @@
 void ChangeByteOrder(char * pData, int iLength);
 
 CString ByteToString(BYTE byByte);
+std::string ByteToString1(BYTE byByte);
 void ByteArrayToString(PBYTE pData, int iLength, CString & strResult, LPCTSTR lpszPrefix = _T(""));
-void ByteArrayToString(PBYTE pData, int iLength, std::string& strResult, LPCTSTR lpszPrefix = _T(""));
+void ByteArrayToString(const CSettings::ByteArray& pData, int iLength, std::string& strResult, LPCTSTR lpszPrefix = _T(""));
 
 BOOL ByteArrayFromString(const CString & strData, CByteArray & arResult, LPCTSTR lpszPrefix = _T(""));
+BOOL ByteArrayFromString(const std::string& strData,
+	CSettings::ByteArray& arResult, LPCTSTR lpszPrefix = _T(""));
 
 inline void ChangeByteOrder(char * pData, int iLength)
 {
@@ -29,11 +32,26 @@ inline CString ByteToString(BYTE byByte)
 	return strResult;
 }
 
+inline std::string ByteToString1(BYTE byByte)
+{
+	char strTemp[100];
+	snprintf(strTemp, sizeof(strTemp), _T("%02X"), byByte);
+	return strTemp;
+}
+
 inline void ByteArrayToString(PBYTE pData, int iLength, CString & strResult, LPCTSTR lpszPrefix)
 {
 	strResult = lpszPrefix;
 	for(int i = 0; i < iLength; i++)
 		strResult += ByteToString(pData[i]);
+}
+
+inline void ByteArrayToString(const CSettings::ByteArray& pData,
+	int iLength, std::string& strResult, LPCTSTR lpszPrefix)
+{
+	strResult = lpszPrefix;
+	for (int i = 0; i < iLength; i++)
+		strResult += ByteToString1(pData[i]);
 }
 
 inline void ByteArrayToString(PBYTE pData, int iLength, std::string& strResult, LPCTSTR lpszPrefix)
