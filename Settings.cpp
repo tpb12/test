@@ -205,12 +205,12 @@ BOOL CSettings::Load(LPCTSTR lpszProfileName)
 			::StrToIntEx(strLine.c_str(), STIF_SUPPORT_HEX, &iValue))
 			m_wPUAddr = (WORD)iValue;
 
-		if (SettingsLookup(mapSettings1, _T("[Message]/Prefix"), strLine) &&
-			ByteArrayFromString(strLine.c_str(), m_arPrefix, _T("")));
+		if (SettingsLookup(mapSettings1, _T("[Message]/Prefix"), strLine))
+			ByteArrayFromString(strLine.c_str(), m_arPrefix, _T(""));
 			//m_arPrefix.Copy(arTemp);
 
-		if (SettingsLookup(mapSettings1, _T("[Message]/OutPrefix"), strLine) &&
-			ByteArrayFromString(strLine.c_str(), m_arOutPrefix, _T("")));
+		if (SettingsLookup(mapSettings1, _T("[Message]/OutPrefix"), strLine))
+			ByteArrayFromString(strLine.c_str(), m_arOutPrefix, _T(""));
 			//m_arOutPrefix.Copy(arTemp);
 
 		if(SettingsLookup(mapSettings1, _T("[Message]/CRC16Init"), strLine) &&

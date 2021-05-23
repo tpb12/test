@@ -63,7 +63,6 @@ public:
 			m_wSrcMask = wSrcMask;
 		}
 	} MESSAGETYPE, * PMESSAGETYPE;
-	//CMap<WORD, WORD, MESSAGETYPE, MESSAGETYPE&> m_mapMsgTypes;
 	std::map<WORD, MESSAGETYPE>m_mapMsgTypes;
 	MapWordToPtr m_mapMsgTypesToUnpack;
 	BOOL m_bUnpackAll;
